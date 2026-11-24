@@ -1,0 +1,225 @@
+@startuml alur_bisnis_stok
+ title Proses Bisnis Simple Stock Management
+ skinparam shadowing false
+ skinparam activity {
+   BackgroundColor #EAF2F8
+   BorderColor #2471A3
+   DiamondBackgroundColor #FCF3CF
+ }
+
+|Pengguna|
+start
+:Login;
+|Sistem Aplikasi|
+:Validasi akun dan sesi;
+while (Login gagal?) is (Ya)
+  :Tampilkan kesalahan dan batasi percobaan
+sesuai konfigurasi django-axes;
+  |Pengguna|
+  :Coba login kembali;
+  |Sistem Aplikasi|
+  :Validasi akun dan sesi;
+endwhile (Tidak)
+:Muat dashboard sesuai grup dan hak akses;
+
+repeat
+  |Pengguna|
+  :Pilih aktivitas;
+  switch (Aktivitas)
+
+  case (Lihat / ekspor stok)
+    :Pilih data stok, pencarian,
+pengurutan, dan halaman;
+    |Sistem Aplikasi|
+    :Ambil data sesuai cakupan akses;
+    :Tampilkan stok dengan pagination;
+    |Pengguna|
+    if (Unduh Excel?) then (Ya)
+      |Sistem Aplikasi|
+      if (Anggota managers atau shop_users?) then (Ya)
+        :Buat spreadsheet dan kirim unduhan;
+      else (Tidak)
+        :Tolak ekspor;
+      endif
+    else (Tidak)
+      :Baca informasi stok;
+    endif
+
+  case (Kelola stok / impor)
+    |Sistem Aplikasi|
+    if (Anggota managers?) then (Ya)
+      |Manajer Gudang|
+      :Opsional: aktifkan maintenance
+untuk membatasi transfer toko;
+      if (Cara pembaruan?) then (Manual)
+        :Tambah, ubah, atau hapus barang;
+        |Sistem Aplikasi|
+        :Validasi data;
+        if (Valid?) then (Ya)
+          :Simpan perubahan stok;
+        else (Tidak)
+          :Tampilkan pesan kesalahan;
+        endif
+      else (Impor Excel)
+        |Manajer Gudang|
+        :Pilih spreadsheet stok;
+        |Sistem Aplikasi|
+        if (Upload diaktifkan?) then (Ya)
+          :Baca spreadsheet dan konversi
+skema khusus jika dikonfigurasi;
+          :Validasi data impor;
+          if (Data valid?) then (Ya)
+            :Sinkronkan data berdasarkan SKU;
+            :Tambahkan data baru dan
+perbarui data yang berbeda;
+            if (Penghapusan melalui impor diaktifkan?) then (Ya)
+              :Hapus data sesuai cakupan impor
+yang tidak ada di spreadsheet;
+            else (Tidak)
+              :Pertahankan data lainnya;
+            endif
+          else (Tidak)
+            :Tampilkan kesalahan impor;
+          endif
+        else (Tidak)
+          :Tolak upload;
+        endif
+      endif
+      |Manajer Gudang|
+      :Periksa hasil pembaruan;
+      :Nonaktifkan maintenance
+jika pemeliharaan selesai;
+    else (Tidak)
+      |Sistem Aplikasi|
+      :Tolak pengelolaan stok;
+    endif
+
+  case (Buat / ubah / kirim permintaan)
+    |Sistem Aplikasi|
+    if (Anggota shop_users dan maintenance nonaktif?) then (Ya)
+      |Pengguna Toko|
+      :Pilih barang dan jumlah transfer;
+      |Sistem Aplikasi|
+      :Validasi barang, jumlah bulat positif,
+stok tersedia, dan draft belum dikirim;
+      if (Valid?) then (Ya)
+        :Buat / perbarui draft TransferItem
+(ordered = False);
+        note right
+          Stok belum berpindah pada tahap ini.
+        end note
+        |Pengguna Toko|
+        switch (Tindakan terhadap draft)
+        case (Simpan untuk nanti)
+          :Biarkan draft di Transfers Pending;
+        case (Batalkan)
+          |Sistem Aplikasi|
+          :Periksa kepemilikan dan maintenance;
+          if (Pembatalan diizinkan?) then (Ya)
+            :Hapus draft tanpa mengubah stok;
+          else (Tidak)
+            :Tampilkan kesalahan;
+          endif
+        case (Kirim)
+          |Pengguna Toko|
+          :Klik Send Transfer Request;
+          |Sistem Aplikasi|
+          :Periksa kembali maintenance
+dan keberadaan draft milik pengguna;
+          if (Boleh dikirim?) then (Ya)
+            :Proses notifikasi email jika diaktifkan;
+            note right
+              Penerima email: grup receive_mail.
+            end note
+            if (Proses berhasil?) then (Ya)
+              :Tandai ordered = True;
+              :UI toko menonaktifkan perubahan;
+              :Tampilkan permintaan kepada manajer;
+              note right
+                Permintaan menunggu tindakan manajer.
+                Pemrosesan berlangsung pada aktivitas
+                "Proses transfer pending".
+              end note
+            else (Tidak)
+              :Tampilkan kesalahan pengiriman permintaan;
+            endif
+          else (Tidak)
+            :Tampilkan pesan kesalahan;
+          endif
+        endswitch
+      else (Tidak)
+        :Tampilkan pesan kesalahan;
+      endif
+    else (Tidak)
+      :Tolak tindakan;
+    endif
+
+  case (Proses transfer pending)
+    |Sistem Aplikasi|
+    if (Anggota managers?) then (Ya)
+      |Manajer Gudang|
+      :Tinjau permintaan transfer pending;
+      if (Keputusan manajer?) then (Batalkan)
+        |Sistem Aplikasi|
+        :Hapus transfer tanpa perubahan stok,
+stok gudang dan toko tidak berubah;
+      else (Dispatch)
+        |Manajer Gudang|
+        :Sesuaikan jumlah bila perlu;
+        :Klik Dispatch;
+        |Sistem Aplikasi|
+        :Validasi jumlah positif dan stok tersedia;
+        if (Valid?) then (Ya)
+          :Dalam satu transaksi database atomik,
+kurangi stok gudang, tambah stok toko,
+dan hapus transfer pending;
+          note right
+            Pengurangan stok memakai pembaruan bersyarat.
+            Kegagalan transaksi membatalkan perubahan.
+            Stok baru berpindah saat Dispatch berhasil.
+          end note
+          :Tampilkan hasil pemrosesan transfer;
+        else (Tidak)
+          :Tampilkan kesalahan dan
+pertahankan transfer untuk dikoreksi;
+        endif
+      endif
+    else (Tidak)
+      :Tolak pemrosesan oleh non-manajer;
+    endif
+
+  case (Administrasi)
+    |Sistem Aplikasi|
+    if (Memiliki akses Django Admin?) then (Ya)
+      |Pengguna|
+      :Buka halaman admin;
+      :Kelola akun, grup, dan konfigurasi
+sesuai permission;
+      note right
+        Grup utama: managers dan shop_users.
+        Grup notifikasi: receive_mail.
+        Konfigurasi mencakup upload,
+        penghapusan impor, email, dan pagination.
+      end note
+    else (Tidak)
+      |Sistem Aplikasi|
+      :Tolak akses admin;
+    endif
+  endswitch
+
+  |Sistem Aplikasi|
+  :Kembali ke dashboard / perbarui tampilan;
+  |Pengguna|
+repeat while (Lanjut menggunakan aplikasi?) is (Ya) not (Tidak)
+:Logout;
+|Sistem Aplikasi|
+:Akhiri sesi pengguna;
+stop
+
+legend bottom
+  Diagram aktivitas PlantUML terpadu dengan swimlane peran.
+  Setiap pengguna menjalankan aktivitas sesuai hak aksesnya.
+  Pengiriman permintaan oleh toko dan Dispatch oleh manajer
+  dapat berlangsung pada sesi pengguna yang berbeda.
+endlegend
+@enduml

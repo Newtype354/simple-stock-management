@@ -1,0 +1,760 @@
+<?xml version='1.0' encoding='utf-8'?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_Stock" targetNamespace="https://simple-stock-management.local/bpmn">
+  <bpmn:process id="Transfer" name="Permintaan dan pengiriman stok" isExecutable="false">
+    <bpmn:documentation>Prasyarat: pengguna sudah login dan memiliki grup yang sesuai. Diagram menjelaskan alur bisnis normal; kegagalan teknis ditampilkan sebagai error aplikasi. Notifikasi opsional ditujukan ke grup receive_mail. Stok baru berpindah ketika manajer melakukan Dispatch, bukan saat draft atau permintaan dibuat. UI toko mengunci permintaan yang sudah dikirim; backend pembatalan non-manajer memeriksa kepemilikan tetapi belum memeriksa ordered.</bpmn:documentation>
+    <bpmn:laneSet id="Transfer_lanes">
+      <bpmn:lane id="Transfer_lane0" name="Pengguna toko">
+        <bpmn:flowNodeRef>Transfer_start</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_draft</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_choice</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_endDraft</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_endCancel</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_submit</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Transfer_lane1" name="Manajer gudang">
+        <bpmn:flowNodeRef>Transfer_review</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_decision</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Transfer_lane2" name="Sistem aplikasi">
+        <bpmn:flowNodeRef>Transfer_valid</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_reject</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_sendValid</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_sendReject</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_enough</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_end</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_validate</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_save</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_cancelDraft</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_checkSend</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_order</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_cancel</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_dispatch</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Transfer_update</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Transfer_start" name="Kebutuhan stok toko">
+      <bpmn:outgoing>Transfer_flow0</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="Transfer_draft" name="Pilih barang dan jumlah transfer">
+      <bpmn:incoming>Transfer_flow0</bpmn:incoming>
+      <bpmn:outgoing>Transfer_flow1</bpmn:outgoing>
+      <bpmn:incoming>Transfer_flow6</bpmn:incoming>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="Transfer_validate" name="Periksa hak akses, maintenance, jumlah dan stok">
+      <bpmn:incoming>Transfer_flow1</bpmn:incoming>
+      <bpmn:outgoing>Transfer_flow2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Transfer_valid" name="Permintaan valid?">
+      <bpmn:incoming>Transfer_flow2</bpmn:incoming>
+      <bpmn:outgoing>Transfer_flow3</bpmn:outgoing>
+      <bpmn:outgoing>Transfer_flow4</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="Transfer_reject" name="Permintaan ditolak">
+      <bpmn:incoming>Transfer_flow3</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="Transfer_save" name="Simpan draft transfer; stok belum berubah">
+      <bpmn:incoming>Transfer_flow4</bpmn:incoming>
+      <bpmn:outgoing>Transfer_flow5</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Transfer_choice" name="Tindakan toko?">
+      <bpmn:incoming>Transfer_flow5</bpmn:incoming>
+      <bpmn:outgoing>Transfer_flow6</bpmn:outgoing>
+      <bpmn:outgoing>Transfer_flow7</bpmn:outgoing>
+      <bpmn:outgoing>Transfer_flow9</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="Transfer_cancelDraft" name="Hapus draft milik toko">
+      <bpmn:incoming>Transfer_flow7</bpmn:incoming>
+      <bpmn:outgoing>Transfer_flow8</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="Transfer_endDraft" name="Draft dibatalkan">
+      <bpmn:incoming>Transfer_flow8</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:userTask id="Transfer_submit" name="Kirim permintaan transfer">
+      <bpmn:incoming>Transfer_flow9</bpmn:incoming>
+      <bpmn:outgoing>Transfer_flow10</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="Transfer_checkSend" name="Periksa maintenance dan keberadaan draft">
+      <bpmn:incoming>Transfer_flow10</bpmn:incoming>
+      <bpmn:outgoing>Transfer_flow11</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Transfer_sendValid" name="Boleh dikirim?">
+      <bpmn:incoming>Transfer_flow11</bpmn:incoming>
+      <bpmn:outgoing>Transfer_flow12</bpmn:outgoing>
+      <bpmn:outgoing>Transfer_flow13</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="Transfer_sendReject" name="Pengiriman permintaan ditolak">
+      <bpmn:incoming>Transfer_flow12</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="Transfer_order" name="Proses notifikasi jika aktif; tandai ordered = True">
+      <bpmn:incoming>Transfer_flow13</bpmn:incoming>
+      <bpmn:outgoing>Transfer_flow14</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="Transfer_review" name="Manajer meninjau permintaan dan jumlah">
+      <bpmn:incoming>Transfer_flow14</bpmn:incoming>
+      <bpmn:outgoing>Transfer_flow15</bpmn:outgoing>
+      <bpmn:incoming>Transfer_flow20</bpmn:incoming>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Transfer_decision" name="Keputusan manajer?">
+      <bpmn:incoming>Transfer_flow15</bpmn:incoming>
+      <bpmn:outgoing>Transfer_flow16</bpmn:outgoing>
+      <bpmn:outgoing>Transfer_flow18</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="Transfer_cancel" name="Hapus transfer tanpa mengubah stok">
+      <bpmn:incoming>Transfer_flow16</bpmn:incoming>
+      <bpmn:outgoing>Transfer_flow17</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="Transfer_endCancel" name="Transfer dibatalkan">
+      <bpmn:incoming>Transfer_flow17</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="Transfer_dispatch" name="Validasi jumlah dan stok saat Dispatch">
+      <bpmn:incoming>Transfer_flow18</bpmn:incoming>
+      <bpmn:outgoing>Transfer_flow19</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Transfer_enough" name="Stok cukup dan jumlah valid?">
+      <bpmn:incoming>Transfer_flow19</bpmn:incoming>
+      <bpmn:outgoing>Transfer_flow20</bpmn:outgoing>
+      <bpmn:outgoing>Transfer_flow21</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="Transfer_update" name="Transaksi atomik: kurangi stok gudang, tambah stok toko, hapus transfer">
+      <bpmn:incoming>Transfer_flow21</bpmn:incoming>
+      <bpmn:outgoing>Transfer_flow22</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="Transfer_end" name="Stok diterima toko dalam sistem">
+      <bpmn:incoming>Transfer_flow22</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Transfer_flow0" sourceRef="Transfer_start" targetRef="Transfer_draft" />
+    <bpmn:sequenceFlow id="Transfer_flow1" sourceRef="Transfer_draft" targetRef="Transfer_validate" />
+    <bpmn:sequenceFlow id="Transfer_flow2" sourceRef="Transfer_validate" targetRef="Transfer_valid" />
+    <bpmn:sequenceFlow id="Transfer_flow3" sourceRef="Transfer_valid" targetRef="Transfer_reject" name="Tidak" />
+    <bpmn:sequenceFlow id="Transfer_flow4" sourceRef="Transfer_valid" targetRef="Transfer_save" name="Ya" />
+    <bpmn:sequenceFlow id="Transfer_flow5" sourceRef="Transfer_save" targetRef="Transfer_choice" />
+    <bpmn:sequenceFlow id="Transfer_flow6" sourceRef="Transfer_choice" targetRef="Transfer_draft" name="Ubah" />
+    <bpmn:sequenceFlow id="Transfer_flow7" sourceRef="Transfer_choice" targetRef="Transfer_cancelDraft" name="Batalkan" />
+    <bpmn:sequenceFlow id="Transfer_flow8" sourceRef="Transfer_cancelDraft" targetRef="Transfer_endDraft" />
+    <bpmn:sequenceFlow id="Transfer_flow9" sourceRef="Transfer_choice" targetRef="Transfer_submit" name="Kirim" />
+    <bpmn:sequenceFlow id="Transfer_flow10" sourceRef="Transfer_submit" targetRef="Transfer_checkSend" />
+    <bpmn:sequenceFlow id="Transfer_flow11" sourceRef="Transfer_checkSend" targetRef="Transfer_sendValid" />
+    <bpmn:sequenceFlow id="Transfer_flow12" sourceRef="Transfer_sendValid" targetRef="Transfer_sendReject" name="Tidak" />
+    <bpmn:sequenceFlow id="Transfer_flow13" sourceRef="Transfer_sendValid" targetRef="Transfer_order" name="Ya" />
+    <bpmn:sequenceFlow id="Transfer_flow14" sourceRef="Transfer_order" targetRef="Transfer_review" />
+    <bpmn:sequenceFlow id="Transfer_flow15" sourceRef="Transfer_review" targetRef="Transfer_decision" />
+    <bpmn:sequenceFlow id="Transfer_flow16" sourceRef="Transfer_decision" targetRef="Transfer_cancel" name="Batalkan" />
+    <bpmn:sequenceFlow id="Transfer_flow17" sourceRef="Transfer_cancel" targetRef="Transfer_endCancel" />
+    <bpmn:sequenceFlow id="Transfer_flow18" sourceRef="Transfer_decision" targetRef="Transfer_dispatch" name="Dispatch" />
+    <bpmn:sequenceFlow id="Transfer_flow19" sourceRef="Transfer_dispatch" targetRef="Transfer_enough" />
+    <bpmn:sequenceFlow id="Transfer_flow20" sourceRef="Transfer_enough" targetRef="Transfer_review" name="Tidak; koreksi" />
+    <bpmn:sequenceFlow id="Transfer_flow21" sourceRef="Transfer_enough" targetRef="Transfer_update" name="Ya" />
+    <bpmn:sequenceFlow id="Transfer_flow22" sourceRef="Transfer_update" targetRef="Transfer_end" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Transfer_diagram" name="Permintaan dan pengiriman stok">
+    <bpmndi:BPMNPlane id="Transfer_plane" bpmnElement="Transfer">
+      <bpmndi:BPMNShape id="Transfer_laneShape0" bpmnElement="Transfer_lane0" isHorizontal="true">
+        <dc:Bounds x="40" y="40" width="2940" height="500" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_laneShape1" bpmnElement="Transfer_lane1" isHorizontal="true">
+        <dc:Bounds x="40" y="540" width="2940" height="500" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_laneShape2" bpmnElement="Transfer_lane2" isHorizontal="true">
+        <dc:Bounds x="40" y="1040" width="2940" height="500" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_start_shape" bpmnElement="Transfer_start">
+        <dc:Bounds x="100" y="110" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="65" y="154.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_draft_shape" bpmnElement="Transfer_draft">
+        <dc:Bounds x="190" y="110" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_validate_shape" bpmnElement="Transfer_validate">
+        <dc:Bounds x="390" y="1110" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_valid_shape" bpmnElement="Transfer_valid">
+        <dc:Bounds x="590" y="1110" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="555" y="1168.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_reject_shape" bpmnElement="Transfer_reject">
+        <dc:Bounds x="720" y="1110" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="685" y="1154.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_save_shape" bpmnElement="Transfer_save">
+        <dc:Bounds x="720" y="1250" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_choice_shape" bpmnElement="Transfer_choice">
+        <dc:Bounds x="930" y="110" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="895" y="168.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_cancelDraft_shape" bpmnElement="Transfer_cancelDraft">
+        <dc:Bounds x="1080" y="1110" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_endDraft_shape" bpmnElement="Transfer_endDraft">
+        <dc:Bounds x="1280" y="110" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1245" y="154.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_submit_shape" bpmnElement="Transfer_submit">
+        <dc:Bounds x="1080" y="110" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_checkSend_shape" bpmnElement="Transfer_checkSend">
+        <dc:Bounds x="1280" y="1110" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_sendValid_shape" bpmnElement="Transfer_sendValid">
+        <dc:Bounds x="1490" y="1110" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1455" y="1168.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_sendReject_shape" bpmnElement="Transfer_sendReject">
+        <dc:Bounds x="1610" y="1110" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1575" y="1154.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_order_shape" bpmnElement="Transfer_order">
+        <dc:Bounds x="1610" y="1250" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_review_shape" bpmnElement="Transfer_review">
+        <dc:Bounds x="1820" y="610" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_decision_shape" bpmnElement="Transfer_decision">
+        <dc:Bounds x="2020" y="610" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1985" y="668.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_cancel_shape" bpmnElement="Transfer_cancel">
+        <dc:Bounds x="2140" y="1110" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_endCancel_shape" bpmnElement="Transfer_endCancel">
+        <dc:Bounds x="2340" y="110" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2305" y="154.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_dispatch_shape" bpmnElement="Transfer_dispatch">
+        <dc:Bounds x="2140" y="1250" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_enough_shape" bpmnElement="Transfer_enough">
+        <dc:Bounds x="2340" y="1110" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2305" y="1168.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_update_shape" bpmnElement="Transfer_update">
+        <dc:Bounds x="2480" y="1110" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Transfer_end_shape" bpmnElement="Transfer_end">
+        <dc:Bounds x="2700" y="1110" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2665" y="1154.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Transfer_edge0" bpmnElement="Transfer_flow0">
+        <di:waypoint x="136.0" y="128.0" />
+        <di:waypoint x="170.0" y="128.0" />
+        <di:waypoint x="170.0" y="150.0" />
+        <di:waypoint x="190.0" y="150.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge1" bpmnElement="Transfer_flow1">
+        <di:waypoint x="340.0" y="150.0" />
+        <di:waypoint x="370.0" y="150.0" />
+        <di:waypoint x="370.0" y="1150.0" />
+        <di:waypoint x="390.0" y="1150.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge2" bpmnElement="Transfer_flow2">
+        <di:waypoint x="540.0" y="1150.0" />
+        <di:waypoint x="570.0" y="1150.0" />
+        <di:waypoint x="570.0" y="1135.0" />
+        <di:waypoint x="590.0" y="1135.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge3" bpmnElement="Transfer_flow3">
+        <di:waypoint x="640.0" y="1135.0" />
+        <di:waypoint x="700.0" y="1135.0" />
+        <di:waypoint x="700.0" y="1128.0" />
+        <di:waypoint x="720.0" y="1128.0" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="645.0" y="1105.0" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge4" bpmnElement="Transfer_flow4">
+        <di:waypoint x="640.0" y="1135.0" />
+        <di:waypoint x="700.0" y="1135.0" />
+        <di:waypoint x="700.0" y="1290.0" />
+        <di:waypoint x="720.0" y="1290.0" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="645.0" y="1105.0" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge5" bpmnElement="Transfer_flow5">
+        <di:waypoint x="870.0" y="1290.0" />
+        <di:waypoint x="910.0" y="1290.0" />
+        <di:waypoint x="910.0" y="135.0" />
+        <di:waypoint x="930.0" y="135.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge6" bpmnElement="Transfer_flow6">
+        <di:waypoint x="955.0" y="160.0" />
+        <di:waypoint x="955.0" y="260.0" />
+        <di:waypoint x="265.0" y="260.0" />
+        <di:waypoint x="265.0" y="190.0" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="985.0" y="105.0" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge7" bpmnElement="Transfer_flow7">
+        <di:waypoint x="980.0" y="135.0" />
+        <di:waypoint x="1060.0" y="135.0" />
+        <di:waypoint x="1060.0" y="1150.0" />
+        <di:waypoint x="1080.0" y="1150.0" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="985.0" y="105.0" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge8" bpmnElement="Transfer_flow8">
+        <di:waypoint x="1230.0" y="1150.0" />
+        <di:waypoint x="1260.0" y="1150.0" />
+        <di:waypoint x="1260.0" y="128.0" />
+        <di:waypoint x="1280.0" y="128.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge9" bpmnElement="Transfer_flow9">
+        <di:waypoint x="980.0" y="135.0" />
+        <di:waypoint x="1060.0" y="135.0" />
+        <di:waypoint x="1060.0" y="150.0" />
+        <di:waypoint x="1080.0" y="150.0" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="985.0" y="105.0" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge10" bpmnElement="Transfer_flow10">
+        <di:waypoint x="1230.0" y="150.0" />
+        <di:waypoint x="1260.0" y="150.0" />
+        <di:waypoint x="1260.0" y="1150.0" />
+        <di:waypoint x="1280.0" y="1150.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge11" bpmnElement="Transfer_flow11">
+        <di:waypoint x="1430.0" y="1150.0" />
+        <di:waypoint x="1470.0" y="1150.0" />
+        <di:waypoint x="1470.0" y="1135.0" />
+        <di:waypoint x="1490.0" y="1135.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge12" bpmnElement="Transfer_flow12">
+        <di:waypoint x="1540.0" y="1135.0" />
+        <di:waypoint x="1590.0" y="1135.0" />
+        <di:waypoint x="1590.0" y="1128.0" />
+        <di:waypoint x="1610.0" y="1128.0" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1545.0" y="1105.0" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge13" bpmnElement="Transfer_flow13">
+        <di:waypoint x="1540.0" y="1135.0" />
+        <di:waypoint x="1590.0" y="1135.0" />
+        <di:waypoint x="1590.0" y="1290.0" />
+        <di:waypoint x="1610.0" y="1290.0" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1545.0" y="1105.0" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge14" bpmnElement="Transfer_flow14">
+        <di:waypoint x="1760.0" y="1290.0" />
+        <di:waypoint x="1800.0" y="1290.0" />
+        <di:waypoint x="1800.0" y="650.0" />
+        <di:waypoint x="1820.0" y="650.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge15" bpmnElement="Transfer_flow15">
+        <di:waypoint x="1970.0" y="650.0" />
+        <di:waypoint x="2000.0" y="650.0" />
+        <di:waypoint x="2000.0" y="635.0" />
+        <di:waypoint x="2020.0" y="635.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge16" bpmnElement="Transfer_flow16">
+        <di:waypoint x="2070.0" y="635.0" />
+        <di:waypoint x="2120.0" y="635.0" />
+        <di:waypoint x="2120.0" y="1150.0" />
+        <di:waypoint x="2140.0" y="1150.0" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2075.0" y="605.0" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge17" bpmnElement="Transfer_flow17">
+        <di:waypoint x="2290.0" y="1150.0" />
+        <di:waypoint x="2320.0" y="1150.0" />
+        <di:waypoint x="2320.0" y="128.0" />
+        <di:waypoint x="2340.0" y="128.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge18" bpmnElement="Transfer_flow18">
+        <di:waypoint x="2070.0" y="635.0" />
+        <di:waypoint x="2120.0" y="635.0" />
+        <di:waypoint x="2120.0" y="1290.0" />
+        <di:waypoint x="2140.0" y="1290.0" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2075.0" y="605.0" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge19" bpmnElement="Transfer_flow19">
+        <di:waypoint x="2290.0" y="1290.0" />
+        <di:waypoint x="2320.0" y="1290.0" />
+        <di:waypoint x="2320.0" y="1135.0" />
+        <di:waypoint x="2340.0" y="1135.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge20" bpmnElement="Transfer_flow20">
+        <di:waypoint x="2365.0" y="1160.0" />
+        <di:waypoint x="2365.0" y="1230.0" />
+        <di:waypoint x="1895.0" y="1230.0" />
+        <di:waypoint x="1895.0" y="690.0" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2395.0" y="1105.0" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge21" bpmnElement="Transfer_flow21">
+        <di:waypoint x="2390.0" y="1135.0" />
+        <di:waypoint x="2460.0" y="1135.0" />
+        <di:waypoint x="2460.0" y="1150.0" />
+        <di:waypoint x="2480.0" y="1150.0" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2395.0" y="1105.0" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Transfer_edge22" bpmnElement="Transfer_flow22">
+        <di:waypoint x="2630.0" y="1150.0" />
+        <di:waypoint x="2680.0" y="1150.0" />
+        <di:waypoint x="2680.0" y="1128.0" />
+        <di:waypoint x="2700.0" y="1128.0" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmn:process id="Kelola" name="Pengelolaan stok dan impor Excel" isExecutable="false">
+    <bpmn:documentation>Prasyarat: login sebagai anggota managers. Impor mensyaratkan allow_uploads aktif. Penghapusan data yang tidak ada di spreadsheet mengikuti allow_upload_deletions. Manajer dapat mengaktifkan maintenance untuk membatasi transfer toko selama pemeliharaan stok. Akun, grup, dan konfigurasi dikelola melalui Django Admin sesuai izin.</bpmn:documentation>
+    <bpmn:laneSet id="Kelola_lanes">
+      <bpmn:lane id="Kelola_lane0" name="Pengguna toko" />
+      <bpmn:lane id="Kelola_lane1" name="Manajer gudang">
+        <bpmn:flowNodeRef>Kelola_start</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Kelola_choose</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Kelola_manual</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Kelola_end</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Kelola_upload</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Kelola_lane2" name="Sistem aplikasi">
+        <bpmn:flowNodeRef>Kelola_valid</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Kelola_reject</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Kelola_validate</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Kelola_persist</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Kelola_start" name="Perlu memperbarui stok">
+      <bpmn:outgoing>Kelola_flow0</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:exclusiveGateway id="Kelola_choose" name="Cara pembaruan?">
+      <bpmn:incoming>Kelola_flow0</bpmn:incoming>
+      <bpmn:outgoing>Kelola_flow1</bpmn:outgoing>
+      <bpmn:outgoing>Kelola_flow2</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Kelola_manual" name="Tambah, ubah, atau hapus barang">
+      <bpmn:incoming>Kelola_flow1</bpmn:incoming>
+      <bpmn:outgoing>Kelola_flow3</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Kelola_upload" name="Unggah Excel jika upload diaktifkan">
+      <bpmn:incoming>Kelola_flow2</bpmn:incoming>
+      <bpmn:outgoing>Kelola_flow4</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="Kelola_validate" name="Periksa izin manajer dan validasi data">
+      <bpmn:incoming>Kelola_flow3</bpmn:incoming>
+      <bpmn:incoming>Kelola_flow4</bpmn:incoming>
+      <bpmn:outgoing>Kelola_flow5</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Kelola_valid" name="Valid?">
+      <bpmn:incoming>Kelola_flow5</bpmn:incoming>
+      <bpmn:outgoing>Kelola_flow6</bpmn:outgoing>
+      <bpmn:outgoing>Kelola_flow7</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="Kelola_reject" name="Tampilkan kesalahan">
+      <bpmn:incoming>Kelola_flow6</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="Kelola_persist" name="Simpan perubahan atau sinkronkan spreadsheet berdasarkan SKU">
+      <bpmn:incoming>Kelola_flow7</bpmn:incoming>
+      <bpmn:outgoing>Kelola_flow8</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="Kelola_end" name="Data stok diperbarui">
+      <bpmn:incoming>Kelola_flow8</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Kelola_flow0" sourceRef="Kelola_start" targetRef="Kelola_choose" />
+    <bpmn:sequenceFlow id="Kelola_flow1" sourceRef="Kelola_choose" targetRef="Kelola_manual" name="Manual" />
+    <bpmn:sequenceFlow id="Kelola_flow2" sourceRef="Kelola_choose" targetRef="Kelola_upload" name="Impor Excel" />
+    <bpmn:sequenceFlow id="Kelola_flow3" sourceRef="Kelola_manual" targetRef="Kelola_validate" />
+    <bpmn:sequenceFlow id="Kelola_flow4" sourceRef="Kelola_upload" targetRef="Kelola_validate" />
+    <bpmn:sequenceFlow id="Kelola_flow5" sourceRef="Kelola_validate" targetRef="Kelola_valid" />
+    <bpmn:sequenceFlow id="Kelola_flow6" sourceRef="Kelola_valid" targetRef="Kelola_reject" name="Tidak" />
+    <bpmn:sequenceFlow id="Kelola_flow7" sourceRef="Kelola_valid" targetRef="Kelola_persist" name="Ya" />
+    <bpmn:sequenceFlow id="Kelola_flow8" sourceRef="Kelola_persist" targetRef="Kelola_end" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Kelola_diagram" name="Pengelolaan stok dan impor Excel">
+    <bpmndi:BPMNPlane id="Kelola_plane" bpmnElement="Kelola">
+      <bpmndi:BPMNShape id="Kelola_laneShape0" bpmnElement="Kelola_lane0" isHorizontal="true">
+        <dc:Bounds x="40" y="40" width="1380" height="500" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Kelola_laneShape1" bpmnElement="Kelola_lane1" isHorizontal="true">
+        <dc:Bounds x="40" y="540" width="1380" height="500" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Kelola_laneShape2" bpmnElement="Kelola_lane2" isHorizontal="true">
+        <dc:Bounds x="40" y="1040" width="1380" height="500" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Kelola_start_shape" bpmnElement="Kelola_start">
+        <dc:Bounds x="100" y="610" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="65" y="654.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Kelola_choose_shape" bpmnElement="Kelola_choose">
+        <dc:Bounds x="210" y="610" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="175" y="668.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Kelola_manual_shape" bpmnElement="Kelola_manual">
+        <dc:Bounds x="340" y="610" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Kelola_upload_shape" bpmnElement="Kelola_upload">
+        <dc:Bounds x="340" y="750" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Kelola_validate_shape" bpmnElement="Kelola_validate">
+        <dc:Bounds x="570" y="1110" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Kelola_valid_shape" bpmnElement="Kelola_valid">
+        <dc:Bounds x="780" y="1110" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="745" y="1168.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Kelola_reject_shape" bpmnElement="Kelola_reject">
+        <dc:Bounds x="930" y="1110" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="895" y="1154.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Kelola_persist_shape" bpmnElement="Kelola_persist">
+        <dc:Bounds x="930" y="1250" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Kelola_end_shape" bpmnElement="Kelola_end">
+        <dc:Bounds x="1140" y="610" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1105" y="654.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Kelola_edge0" bpmnElement="Kelola_flow0">
+        <di:waypoint x="136.0" y="628.0" />
+        <di:waypoint x="190.0" y="628.0" />
+        <di:waypoint x="190.0" y="635.0" />
+        <di:waypoint x="210.0" y="635.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Kelola_edge1" bpmnElement="Kelola_flow1">
+        <di:waypoint x="260.0" y="635.0" />
+        <di:waypoint x="320.0" y="635.0" />
+        <di:waypoint x="320.0" y="650.0" />
+        <di:waypoint x="340.0" y="650.0" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="265.0" y="605.0" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Kelola_edge2" bpmnElement="Kelola_flow2">
+        <di:waypoint x="260.0" y="635.0" />
+        <di:waypoint x="320.0" y="635.0" />
+        <di:waypoint x="320.0" y="790.0" />
+        <di:waypoint x="340.0" y="790.0" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="265.0" y="605.0" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Kelola_edge3" bpmnElement="Kelola_flow3">
+        <di:waypoint x="490.0" y="650.0" />
+        <di:waypoint x="550.0" y="650.0" />
+        <di:waypoint x="550.0" y="1150.0" />
+        <di:waypoint x="570.0" y="1150.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Kelola_edge4" bpmnElement="Kelola_flow4">
+        <di:waypoint x="490.0" y="790.0" />
+        <di:waypoint x="550.0" y="790.0" />
+        <di:waypoint x="550.0" y="1150.0" />
+        <di:waypoint x="570.0" y="1150.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Kelola_edge5" bpmnElement="Kelola_flow5">
+        <di:waypoint x="720.0" y="1150.0" />
+        <di:waypoint x="760.0" y="1150.0" />
+        <di:waypoint x="760.0" y="1135.0" />
+        <di:waypoint x="780.0" y="1135.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Kelola_edge6" bpmnElement="Kelola_flow6">
+        <di:waypoint x="830.0" y="1135.0" />
+        <di:waypoint x="910.0" y="1135.0" />
+        <di:waypoint x="910.0" y="1128.0" />
+        <di:waypoint x="930.0" y="1128.0" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="835.0" y="1105.0" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Kelola_edge7" bpmnElement="Kelola_flow7">
+        <di:waypoint x="830.0" y="1135.0" />
+        <di:waypoint x="910.0" y="1135.0" />
+        <di:waypoint x="910.0" y="1290.0" />
+        <di:waypoint x="930.0" y="1290.0" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="835.0" y="1105.0" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Kelola_edge8" bpmnElement="Kelola_flow8">
+        <di:waypoint x="1080.0" y="1290.0" />
+        <di:waypoint x="1120.0" y="1290.0" />
+        <di:waypoint x="1120.0" y="628.0" />
+        <di:waypoint x="1140.0" y="628.0" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmn:process id="Laporan" name="Melihat dan mengekspor data stok" isExecutable="false">
+    <bpmn:documentation>Proses ini dapat dimulai oleh pengguna toko atau manajer. Keduanya harus login; ekspor mensyaratkan grup shop_users atau managers. Data mengikuti cakupan hak akses pengguna.</bpmn:documentation>
+    <bpmn:laneSet id="Laporan_lanes">
+      <bpmn:lane id="Laporan_lane0" name="Pengguna toko">
+        <bpmn:flowNodeRef>Laporan_start</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Laporan_request</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Laporan_export</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Laporan_end</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Laporan_lane1" name="Manajer gudang" />
+      <bpmn:lane id="Laporan_lane2" name="Sistem aplikasi">
+        <bpmn:flowNodeRef>Laporan_read</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Laporan_show</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Laporan_file</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Laporan_start" name="Perlu informasi stok">
+      <bpmn:outgoing>Laporan_flow0</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="Laporan_request" name="Pilih data, pencarian, dan pengurutan">
+      <bpmn:incoming>Laporan_flow0</bpmn:incoming>
+      <bpmn:outgoing>Laporan_flow1</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="Laporan_read" name="Periksa akses dan baca data sesuai cakupan pengguna">
+      <bpmn:incoming>Laporan_flow1</bpmn:incoming>
+      <bpmn:outgoing>Laporan_flow2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="Laporan_show" name="Tampilkan stok dengan pagination">
+      <bpmn:incoming>Laporan_flow2</bpmn:incoming>
+      <bpmn:outgoing>Laporan_flow3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Laporan_export" name="Unduh Excel?">
+      <bpmn:incoming>Laporan_flow3</bpmn:incoming>
+      <bpmn:outgoing>Laporan_flow4</bpmn:outgoing>
+      <bpmn:outgoing>Laporan_flow5</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="Laporan_file" name="Buat spreadsheet dan kirim unduhan">
+      <bpmn:incoming>Laporan_flow4</bpmn:incoming>
+      <bpmn:outgoing>Laporan_flow6</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="Laporan_end" name="Informasi stok tersedia">
+      <bpmn:incoming>Laporan_flow5</bpmn:incoming>
+      <bpmn:incoming>Laporan_flow6</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Laporan_flow0" sourceRef="Laporan_start" targetRef="Laporan_request" />
+    <bpmn:sequenceFlow id="Laporan_flow1" sourceRef="Laporan_request" targetRef="Laporan_read" />
+    <bpmn:sequenceFlow id="Laporan_flow2" sourceRef="Laporan_read" targetRef="Laporan_show" />
+    <bpmn:sequenceFlow id="Laporan_flow3" sourceRef="Laporan_show" targetRef="Laporan_export" />
+    <bpmn:sequenceFlow id="Laporan_flow4" sourceRef="Laporan_export" targetRef="Laporan_file" name="Ya" />
+    <bpmn:sequenceFlow id="Laporan_flow5" sourceRef="Laporan_export" targetRef="Laporan_end" name="Tidak" />
+    <bpmn:sequenceFlow id="Laporan_flow6" sourceRef="Laporan_file" targetRef="Laporan_end" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Laporan_diagram" name="Melihat dan mengekspor data stok">
+    <bpmndi:BPMNPlane id="Laporan_plane" bpmnElement="Laporan">
+      <bpmndi:BPMNShape id="Laporan_laneShape0" bpmnElement="Laporan_lane0" isHorizontal="true">
+        <dc:Bounds x="40" y="40" width="1450" height="500" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Laporan_laneShape1" bpmnElement="Laporan_lane1" isHorizontal="true">
+        <dc:Bounds x="40" y="540" width="1450" height="500" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Laporan_laneShape2" bpmnElement="Laporan_lane2" isHorizontal="true">
+        <dc:Bounds x="40" y="1040" width="1450" height="500" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Laporan_start_shape" bpmnElement="Laporan_start">
+        <dc:Bounds x="100" y="110" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="65" y="154.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Laporan_request_shape" bpmnElement="Laporan_request">
+        <dc:Bounds x="200" y="110" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Laporan_read_shape" bpmnElement="Laporan_read">
+        <dc:Bounds x="420" y="1110" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Laporan_show_shape" bpmnElement="Laporan_show">
+        <dc:Bounds x="640" y="1110" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Laporan_export_shape" bpmnElement="Laporan_export">
+        <dc:Bounds x="850" y="110" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="815" y="168.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Laporan_file_shape" bpmnElement="Laporan_file">
+        <dc:Bounds x="990" y="1110" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Laporan_end_shape" bpmnElement="Laporan_end">
+        <dc:Bounds x="1210" y="110" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1175" y="154.0" width="120" height="45" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Laporan_edge0" bpmnElement="Laporan_flow0">
+        <di:waypoint x="136.0" y="128.0" />
+        <di:waypoint x="180.0" y="128.0" />
+        <di:waypoint x="180.0" y="150.0" />
+        <di:waypoint x="200.0" y="150.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Laporan_edge1" bpmnElement="Laporan_flow1">
+        <di:waypoint x="350.0" y="150.0" />
+        <di:waypoint x="400.0" y="150.0" />
+        <di:waypoint x="400.0" y="1150.0" />
+        <di:waypoint x="420.0" y="1150.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Laporan_edge2" bpmnElement="Laporan_flow2">
+        <di:waypoint x="570.0" y="1150.0" />
+        <di:waypoint x="620.0" y="1150.0" />
+        <di:waypoint x="620.0" y="1150.0" />
+        <di:waypoint x="640.0" y="1150.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Laporan_edge3" bpmnElement="Laporan_flow3">
+        <di:waypoint x="790.0" y="1150.0" />
+        <di:waypoint x="830.0" y="1150.0" />
+        <di:waypoint x="830.0" y="135.0" />
+        <di:waypoint x="850.0" y="135.0" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Laporan_edge4" bpmnElement="Laporan_flow4">
+        <di:waypoint x="900.0" y="135.0" />
+        <di:waypoint x="970.0" y="135.0" />
+        <di:waypoint x="970.0" y="1150.0" />
+        <di:waypoint x="990.0" y="1150.0" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="905.0" y="105.0" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Laporan_edge5" bpmnElement="Laporan_flow5">
+        <di:waypoint x="900.0" y="135.0" />
+        <di:waypoint x="1190.0" y="135.0" />
+        <di:waypoint x="1190.0" y="128.0" />
+        <di:waypoint x="1210.0" y="128.0" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="905.0" y="105.0" width="110" height="30" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Laporan_edge6" bpmnElement="Laporan_flow6">
+        <di:waypoint x="1140.0" y="1150.0" />
+        <di:waypoint x="1190.0" y="1150.0" />
+        <di:waypoint x="1190.0" y="128.0" />
+        <di:waypoint x="1210.0" y="128.0" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
