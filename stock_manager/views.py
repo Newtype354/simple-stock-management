@@ -45,17 +45,15 @@ class ItemViewSet(viewsets.ModelViewSet):
                 reverse = ordering.startswith('-')
                 items = natsorted(items, key=lambda x: x.sku, reverse=reverse)
                 return items
-            if ordering.startswith("-"):
-                field = ordering[1:]
-                if field == "quantity":
-                    queryset = queryset.order_by(Cast(field, IntegerField()).desc())
-                else:
-                    queryset = queryset.order_by(Lower(field)).reverse()
+            reverse = ordering.startswith("-")
+            field = ordering[1:] if reverse else ordering
+
+            if field == "quantity":
+                queryset = queryset.order_by(Cast(field, IntegerField()).desc() if reverse else Cast(field, IntegerField()))
+            elif field in ["description"]:
+                queryset = queryset.order_by(Lower(field).desc() if reverse else Lower(field))
             else:
-                if ordering == "quantity":
-                    queryset = queryset.order_by(Cast(ordering, IntegerField()))
-                else:
-                    queryset = queryset.order_by(Lower(ordering))
+                queryset = queryset.order_by(f"-{field}" if reverse else field)
         else:
             queryset = queryset.order_by("last_updated").reverse()
         return queryset
@@ -150,15 +148,15 @@ class ShopItemViewSet(viewsets.ReadOnlyModelViewSet):
                 return items
             if ordering.startswith("-"):
                 field = ordering[1:]
-                if field == "quantity":
-                    queryset = queryset.order_by(Cast(field, IntegerField()).desc())
-                else:
-                    queryset = queryset.order_by(Lower(field)).reverse()
+            reverse = ordering.startswith("-")
+            field = ordering[1:] if reverse else ordering
+
+            if field == "quantity":
+                queryset = queryset.order_by(Cast(field, IntegerField()).desc() if reverse else Cast(field, IntegerField()))
+            elif field in ["description", "item__description"]:
+                queryset = queryset.order_by(Lower(field).desc() if reverse else Lower(field))
             else:
-                if ordering == "quantity":
-                    queryset = queryset.order_by(Cast(ordering, IntegerField()))
-                else:
-                    queryset = queryset.order_by(Lower(ordering))
+                queryset = queryset.order_by(f"-{field}" if reverse else field)
         else:
             # Deterministic default ordering keeps pagination stable.
             queryset = queryset.order_by("-last_updated")
@@ -196,15 +194,15 @@ class TransferItemViewSet(viewsets.ReadOnlyModelViewSet):
                 return items
             if ordering.startswith("-"):
                 field = ordering[1:]
-                if field == "quantity":
-                    queryset = queryset.order_by(Cast(field, IntegerField()).desc())
-                else:
-                    queryset = queryset.order_by(Lower(field)).reverse()
+            reverse = ordering.startswith("-")
+            field = ordering[1:] if reverse else ordering
+
+            if field == "quantity":
+                queryset = queryset.order_by(Cast(field, IntegerField()).desc() if reverse else Cast(field, IntegerField()))
+            elif field in ["description", "item__description"]:
+                queryset = queryset.order_by(Lower(field).desc() if reverse else Lower(field))
             else:
-                if ordering == "quantity":
-                    queryset = queryset.order_by(Cast(ordering, IntegerField()))
-                else:
-                    queryset = queryset.order_by(Lower(ordering))
+                queryset = queryset.order_by(f"-{field}" if reverse else field)
         else:
             # Deterministic default ordering keeps pagination stable.
             queryset = queryset.order_by("-last_updated")

@@ -47,15 +47,11 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 # script-src/style-src hosts if the CDN sources in the templates change.
 CONTENT_SECURITY_POLICY = (
     "default-src 'self'; "
+    "connect-src 'self' https://cdn.jsdelivr.net; "
     "script-src 'self' 'unsafe-inline' https://code.jquery.com; "
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
     "img-src 'self' data:; "
     "font-src 'self' https://cdn.jsdelivr.net data:; "
-    "connect-src 'self'; "
-    "object-src 'none'; "
-    "base-uri 'self'; "
-    "frame-ancestors 'none'; "
-    "form-action 'self'"
 )
 INSTALLED_APPS = [
     "django.contrib.admin",
