@@ -17,6 +17,14 @@ DEBUG = get_bool_env(os.getenv("DJANGO_DEBUG"))
 ALLOWED_HOSTS = [
     host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",")
 ]
+# --- CSRF Trusted Origins for HTTPS on Azure ---
+CSRF_TRUSTED_ORIGINS = [
+    f"https://{host.strip()}"
+    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",")
+    if host.strip()
+] + [
+    "https://*.azurewebsites.net",
+]
 ALLOW_PW_CHANGE = get_bool_env(os.getenv("ALLOW_PW_CHANGE"))
 # --- HTTPS / cookie hardening ---
 # Enabled automatically whenever DEBUG is off (i.e. any real deployment). The

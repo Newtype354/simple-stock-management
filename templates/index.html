@@ -850,8 +850,20 @@
                         fetchItems(1);
                         $('#sku, #description, #retail_price, #quantity').val('');
                     },
-                    error: xhr => {
-                        alert(xhr.responseJSON.detail);
+                                        error: xhr => {
+                        let msg = 'Failed to add item.';
+                        if (xhr.responseJSON) {
+                            if (xhr.responseJSON.detail) {
+                                msg = xhr.responseJSON.detail;
+                            } else {
+                                msg = Object.entries(xhr.responseJSON)
+                                    .map(([f, errs]) => `${f}: ${Array.isArray(errs) ? errs.join(', ') : errs}`)
+                                    .join('\n');
+                            }
+                        } else if (xhr.status === 403) {
+                            msg = 'Forbidden (403): CSRF verification failed or permission denied.';
+                        }
+                        alert(msg);
                     }
                 });
             };
