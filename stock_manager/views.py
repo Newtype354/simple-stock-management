@@ -146,8 +146,6 @@ class ShopItemViewSet(viewsets.ReadOnlyModelViewSet):
                 reverse = ordering.startswith('-')
                 items = natsorted(items, key=lambda x: x.item.sku if x.item else '', reverse=reverse)
                 return items
-            if ordering.startswith("-"):
-                field = ordering[1:]
             reverse = ordering.startswith("-")
             field = ordering[1:] if reverse else ordering
 
@@ -192,8 +190,6 @@ class TransferItemViewSet(viewsets.ReadOnlyModelViewSet):
                 reverse = ordering.startswith('-')
                 items = natsorted(items, key=lambda x: x.item.sku, reverse=reverse)
                 return items
-            if ordering.startswith("-"):
-                field = ordering[1:]
             reverse = ordering.startswith("-")
             field = ordering[1:] if reverse else ordering
 
